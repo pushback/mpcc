@@ -69,19 +69,8 @@ class mpccGetHandler(BaseHTTPRequestHandler):
                     margin:5px;
                     white-space: pre-wrap;
                 }
-                .button{
-                    border:1px gray solid;
-                    padding:0.2em;
-                    text-decoration: none;
-                    background: #eeeeee;
-                    background: -moz-linear-gradient(top,  #eeeeee 0%, #cccccc 100%);
-                    background: -webkit-linear-gradient(top,  #eeeeee 0%,#cccccc 100%);
-                    background: linear-gradient(to bottom,  #eeeeee 0%,#cccccc 100%);
-                }
                 .button:link, .button:visited, .button:hover, .button:active{
                     color: black;
-                }
-                .operation{
                 }
                 .dir, .file{
                     display:block;
