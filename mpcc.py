@@ -37,6 +37,7 @@ class mpccGetHandler(BaseHTTPRequestHandler):
     /                same to "view/"
     /view/path       show dir list of path
     /exec/command    run command as `mpc command`
+    /playing         show dir playing file
     """
 
     def do_GET(self):
@@ -51,18 +52,59 @@ class mpccGetHandler(BaseHTTPRequestHandler):
         try:
             req_path = self.path
             response_code = 200
-            response_body = "<head><title>mpcc(mpc Client)</title></head>"
-            response_body += "<body>"
-            response_body += "<a href=\"/exec/{}\">Play/Stop</a> / ".format(
-                urllib.parse.quote("mpc toggle"))
-            response_body += 'Vol.'
-            response_body += '<input type="button" value="-" onclick="document.createElement(\'img\').src=\'/exec/mpc volume -2\'">'
-            response_body += '<input type="button" value="+" onclick="document.createElement(\'img\').src=\'/exec/mpc volume +2\'">'
-            response_body += '<datalist id="tickmarks"><option value="0"><option value="10"><option value="20"><option value="30"><option value="40"><option value="50"><option value="60"><option value="70"><option value="80"><option value="90"><option value="100"></datalist>'
-            response_body += "----------"
-            response_body += "<a href=\"/exec/{}\">Play Queue Init</a> / ".format(
+            response_body = '''
+            <head>
+                <title>mpcc(mpc Client)</title>
+                <style type="text/css">
+                body{
+                }
+                body, input{
+                    font-size:xx-large;
+                }
+                pre{
+                    background-color:black;
+                    border:1px black solid;
+                    color:lightgray;
+                    padding:0.2em;
+                    margin:5px;
+                    white-space: pre-wrap;
+                }
+                .button{
+                    border:1px gray solid;
+                    padding:0.2em;
+                    text-decoration: none;
+                    background: #eeeeee;
+                    background: -moz-linear-gradient(top,  #eeeeee 0%, #cccccc 100%);
+                    background: -webkit-linear-gradient(top,  #eeeeee 0%,#cccccc 100%);
+                    background: linear-gradient(to bottom,  #eeeeee 0%,#cccccc 100%);
+                }
+                .button:link, .button:visited, .button:hover, .button:active{
+                    color: black;
+                }
+                .operation{
+                }
+                .dir, .file{
+                    display:block;
+                    text-align:left;
+                    padding:0.5em;
+                    width:100%;
+                }
+                </style>
+            </head>
+            <body>'''
+            response_body += "<pre>{}</pre>".format(
+                exec_cmd('mpc -f %file%'))
+            response_body += '''
+            <input type="button" value="&lt;&lt;" onclick="document.createElement('img').src='/exec/mpc prev';location.reload()">
+            <input type="button" value="|&gt;" onclick="document.createElement('img').src='/exec/mpc toggle';location.reload()">
+            <input type="button" value="&gt;&gt;" onclick="document.createElement('img').src='/exec/mpc next';location.reload()">
+            <input type="button" value="Vol-" onclick="document.createElement('img').src='/exec/mpc volume -1';location.reload()">
+            <input type="button" value="Vol+" onclick="document.createElement('img').src='/exec/mpc volume +2';location.reload()">'''
+            response_body += "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
+            response_body += "<input type=\"button\" value=\"Playing dir\" onclick=\"location.href='/playing/'\">"
+            response_body += "<input type=\"button\" value=\"Queue Init\" onclick=\"location.href='/exec/{}'\">".format(
                 urllib.parse.quote("mpc clear && mpc add /", safe=''))
-            response_body += "<a href=\"/exec/{}\">DB Update</a><hr>".format(
+            response_body += "<input type=\"button\" value=\"DB Update\" onclick=\"location.href='/exec/{}'\"><hr>".format(
                 urllib.parse.quote("mpc update --wait"))
 
             # / to view/
@@ -75,6 +117,12 @@ class mpccGetHandler(BaseHTTPRequestHandler):
             rest_param = urllib.parse.unquote("/".join(path_list[2:]))
 
             # execute REST API
+            if rest_cmd == "playing":
+                # API:playing
+                rest_cmd = "view"
+                rest_param = os.path.dirname(
+                    exec_cmd("mpc -f %file%").split("\n")[0])
+
             if rest_cmd == "view":
                 # API:view
                 rest_param = ROOT_PATH + rest_param
@@ -83,8 +131,8 @@ class mpccGetHandler(BaseHTTPRequestHandler):
                     d = d.replace(ROOT_PATH, "", 1)
                     rest_next_param = urllib.parse.quote("{}".format(d))
                     dir_name = os.path.basename(os.path.dirname(d))
-                    response_body += "<a href=\"/view/{}\">{}</a><br>\n".format(
-                        rest_next_param, dir_name)
+                    response_body += "<input type=\"button\" value=\"{}\" onclick=\"location.href='/view/{}'\" class=\"dir\">\n".format(
+                        dir_name, rest_next_param)
                 file_list = get_file_list(rest_param)
                 for f in file_list:
                     f = f.replace(ROOT_PATH, "", 1)
@@ -92,12 +140,18 @@ class mpccGetHandler(BaseHTTPRequestHandler):
                         # .format(re.sub(SKIP_PATH_REGEXP, "", f)))
                         "mpc searchplay filename '{}'".format(f))
                     file_name = os.path.basename(f)
-                    response_body += "<a href=\"/exec/{}\">{}</a><br>\n".format(
-                        rest_next_param, file_name)
+                    response_body += "<input type=\"button\" value=\"{}\" onclick=\"location.href='/exec/{}'\" class=\"file\">\n".format(
+                        file_name, rest_next_param)
             elif rest_cmd == "exec":
                 # API:exec
-                response_body += "$ {}<hr>".format(rest_param)
+                response_body += "<pre>"
+                response_body += "$ {}\n".format(rest_param)
                 response_body += exec_cmd(rest_param)
+                response_body += "</pre>"
+            elif rest_cmd == "favicon.ico":
+                # 404 for "/favicon.ico" request
+                response_code = 404
+                response_body = "".format()
             else:
                 # API:unknown
                 response_code = 501
