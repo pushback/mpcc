@@ -4,13 +4,15 @@
 __author__ = "JhonSmith(@push_back)"
 __version__ = "1.0.0"
 
-import platform
-import subprocess
-import re
 import os
 import pathlib
-from http.server import BaseHTTPRequestHandler, HTTPServer
+import platform
+import re
+import subprocess
+import threading
 import urllib.parse
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from socketserver import ThreadingMixIn
 
 ROOT_PATH = '/media/sd/music/'
 SKIP_PATH_REGEXP = r'^/media/sd/'
@@ -175,6 +177,10 @@ class mpccGetHandler(BaseHTTPRequestHandler):
             self.wfile.write("<br>".encode('utf-8'))
 
 
+class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
+    """Handle requests in a separate thread."""
+
+
 if __name__ == '__main__':
     print("mpcc(mpc client) server")
 
@@ -183,5 +189,5 @@ if __name__ == '__main__':
     # print("ip_addr:" + ip_addr)
 
     # start HTTP server
-    server = HTTPServer(('', 80), mpccGetHandler)
+    server = ThreadedHTTPServer(('', 80), mpccGetHandler)
     server.serve_forever()
