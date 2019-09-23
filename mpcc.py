@@ -8,13 +8,12 @@ import platform
 import subprocess
 import re
 import os
+import pathlib
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import urllib.parse
 
 ROOT_PATH = '/media/sd/music/'
 SKIP_PATH_REGEXP = r'^/media/sd/'
-FIND_DIR = 'find \'{}\' -maxdepth 1 -mindepth 1 -type d | sort -n'
-FIND_FILE = 'find \'{}\' -maxdepth 1 -mindepth 1 -type f | grep .mp3$ | sort -n'
 
 # switch for windows(require Git on windows)
 if platform.system() == 'Windows':
@@ -43,11 +42,19 @@ class mpccGetHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         # return dir list of path
         def get_dir_list(path):
-            return [p + "/" for p in exec_cmd(FIND_DIR.format(path)).split("\n") if p != '']
+            dir_list = [
+                x.as_posix() + "/" for x in pathlib.Path(path).iterdir() if x.is_dir()]
+            if 1 < len(dir_list):
+                dir_list.sort(key=lambda x: ("0000" + x)[4:])
+            return dir_list
 
         # return file(*.mp3) list of path
         def get_file_list(path):
-            return [p for p in exec_cmd(FIND_FILE.format(path)).split("\n") if p != '']
+            file_list = [x.as_posix() for x in pathlib.Path(
+                path).glob("*.mp3") if x.is_file()]
+            if 1 < len(file_list):
+                file_list.sort(key=lambda x: ("0000" + x)[4:])
+            return file_list
 
         try:
             req_path = self.path
@@ -82,7 +89,7 @@ class mpccGetHandler(BaseHTTPRequestHandler):
             </head>
             <body>'''
             response_body += "<pre>{}</pre>".format(
-                exec_cmd('mpc -f %file%'))
+                exec_cmd('mpc'))
             response_body += '''
             <input type="button" value="&lt;&lt;" onclick="document.createElement('img').src='/exec/mpc prev';location.reload()">
             <input type="button" value="|&gt;" onclick="document.createElement('img').src='/exec/mpc toggle';location.reload()">
@@ -114,7 +121,10 @@ class mpccGetHandler(BaseHTTPRequestHandler):
 
             if rest_cmd == "view":
                 # API:view
+                response_body += "<b>{}</b>".format(rest_param)
                 rest_param = ROOT_PATH + rest_param
+
+                # dir list output
                 dir_list = ["/../"] + get_dir_list(rest_param)
                 for d in dir_list:
                     d = d.replace(ROOT_PATH, "", 1)
@@ -122,14 +132,16 @@ class mpccGetHandler(BaseHTTPRequestHandler):
                     dir_name = os.path.basename(os.path.dirname(d))
                     response_body += "<input type=\"button\" value=\"{}\" onclick=\"location.href='/view/{}'\" class=\"dir\">\n".format(
                         dir_name, rest_next_param)
+
+                # file list output
                 file_list = get_file_list(rest_param)
                 for f in file_list:
                     f = f.replace(ROOT_PATH, "", 1)
                     rest_next_param = urllib.parse.quote(
                         # .format(re.sub(SKIP_PATH_REGEXP, "", f)))
-                        "mpc searchplay filename '{}'".format(f))
+                        "mpc searchplay filename '{}'".format(f.replace("'", "'\\''")))
                     file_name = os.path.basename(f)
-                    response_body += "<input type=\"button\" value=\"{}\" onclick=\"location.href='/exec/{}'\" class=\"file\">\n".format(
+                    response_body += "<input type=\"button\" value=\"{}\" onclick=\"document.createElement('img').src='/exec/{}'\" class=\"file\">\n".format(
                         file_name, rest_next_param)
             elif rest_cmd == "exec":
                 # API:exec
