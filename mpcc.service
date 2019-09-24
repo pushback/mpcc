@@ -1,0 +1,11 @@
+[Unit]
+Description=mpc client service
+After=mpd.target
+
+[Service]
+ExecStart=/opt/mpcc/mpcc.py
+Type=simple
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
