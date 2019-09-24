@@ -14,8 +14,8 @@ import urllib.parse
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from socketserver import ThreadingMixIn
 
-ROOT_PATH = '/media/sd/music/'
-SKIP_PATH_REGEXP = r'^/media/sd/'
+ROOT_PATH = '/media/music/'
+SKIP_PATH_REGEXP = r'^/media/'
 
 # switch for windows(require Git on windows)
 if platform.system() == 'Windows':
