@@ -1,5 +1,8 @@
 # mpcc
-mpcc stands for mpc client. MPD is controlled by mpc and supports folder-based music playback.
+mpcc stands for mpc client.<br>
+MPD is controlled by mpc and supports folder-based music playback.
+
+![image](https://user-images.githubusercontent.com/1241251/65521584-6d796600-df24-11e9-88b5-7e98b1ce5b9a.png)
 
 ## Install
 
