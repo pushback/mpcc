@@ -47,7 +47,8 @@ class mpccGetHandler(BaseHTTPRequestHandler):
             dir_list = [
                 x.as_posix() + "/" for x in pathlib.Path(path).iterdir() if x.is_dir()]
             if 1 < len(dir_list):
-                dir_list.sort(key=lambda x: ("0000" + x)[4:])
+                dir_list.sort(key=lambda x: re.sub(
+                    "([0-9]+)(.+)", lambda m: ("0000" + m.group(1))[-4:] + m.group(2), x))
             return dir_list
 
         # return file(*.mp3) list of path
@@ -55,7 +56,8 @@ class mpccGetHandler(BaseHTTPRequestHandler):
             file_list = [x.as_posix() for x in pathlib.Path(
                 path).glob("*.mp3") if x.is_file()]
             if 1 < len(file_list):
-                file_list.sort(key=lambda x: ("0000" + x)[4:])
+                file_list.sort(key=lambda x: re.sub(
+                    "([0-9]+)(.+)", lambda m: ("0000" + m.group(1))[-4:] + m.group(2), x))
             return file_list
 
         try:
@@ -65,15 +67,20 @@ class mpccGetHandler(BaseHTTPRequestHandler):
             <head>
                 <title>mpcc(mpc Client)</title>
                 <style type="text/css">
-                body{
+                *{
+                    font-size:4vw;
                 }
-                body, input{
-                    font-size:xx-large;
+                input{
+                    min-width:3em;
+                }
+                p{
+                    margin : 0.5em;
                 }
                 pre{
                     background-color:black;
                     border:1px black solid;
                     color:lightgray;
+                    font-size:3vw;
                     padding:0.2em;
                     margin:5px;
                     white-space: pre-wrap;
@@ -84,7 +91,7 @@ class mpccGetHandler(BaseHTTPRequestHandler):
                 .dir, .file{
                     display:block;
                     text-align:left;
-                    padding:0.5em;
+                    padding:0.2em;
                     width:100%;
                 }
                 </style>
@@ -92,18 +99,20 @@ class mpccGetHandler(BaseHTTPRequestHandler):
             <body>'''
             response_body += "<pre>{}</pre>".format(
                 exec_cmd('mpc'))
-            response_body += '''
-            <input type="button" value="&lt;&lt;" onclick="document.createElement('img').src='/exec/mpc prev';location.reload()">
-            <input type="button" value="|&gt;" onclick="document.createElement('img').src='/exec/mpc toggle';location.reload()">
-            <input type="button" value="&gt;&gt;" onclick="document.createElement('img').src='/exec/mpc next';location.reload()">
-            <input type="button" value="Vol-" onclick="document.createElement('img').src='/exec/mpc volume -1';location.reload()">
-            <input type="button" value="Vol+" onclick="document.createElement('img').src='/exec/mpc volume +2';location.reload()">'''
-            response_body += "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
+            response_body += "<p>"
+            response_body += '''<input type="button" value="&lt;&lt;" onclick="document.createElement('img').src='/exec/mpc prev';location.reload()">'''
+            response_body += '''<input type="button" value="|&gt;" onclick="document.createElement('img').src='/exec/mpc toggle';location.reload()">'''
+            response_body += '''<input type="button" value="&gt;&gt;" onclick="document.createElement('img').src='/exec/mpc next';location.reload()">'''
+            response_body += '''<input type="button" value="Vol-" onclick="document.createElement('img').src='/exec/mpc volume -1';location.reload()">'''
+            response_body += '''<input type="button" value="Vol+" onclick="document.createElement('img').src='/exec/mpc volume +2';location.reload()">'''
+            response_body += "</p>"
+            response_body += "<p>"
             response_body += "<input type=\"button\" value=\"Playing dir\" onclick=\"location.href='/playing/'\">"
             response_body += "<input type=\"button\" value=\"Queue Init\" onclick=\"location.href='/exec/{}'\">".format(
                 urllib.parse.quote("mpc clear && mpc add /", safe=''))
             response_body += "<input type=\"button\" value=\"DB Update\" onclick=\"location.href='/exec/{}'\"><hr>".format(
                 urllib.parse.quote("mpc update --wait"))
+            response_body += "</p>"
 
             # / to view/
             if req_path == "" or req_path == "/":
@@ -119,7 +128,7 @@ class mpccGetHandler(BaseHTTPRequestHandler):
                 # API:playing
                 rest_cmd = "view"
                 rest_param = os.path.dirname(
-                    exec_cmd("mpc -f %file%").split("\n")[0])
+                    exec_cmd("mpc -f %file%").split("\n")[0]) + "/"
 
             if rest_cmd == "view":
                 # API:view
@@ -127,7 +136,7 @@ class mpccGetHandler(BaseHTTPRequestHandler):
                 rest_param = ROOT_PATH + rest_param
 
                 # dir list output
-                dir_list = ["/../"] + get_dir_list(rest_param)
+                dir_list = [rest_param + "../"] + get_dir_list(rest_param)
                 for d in dir_list:
                     d = d.replace(ROOT_PATH, "", 1)
                     rest_next_param = urllib.parse.quote("{}".format(d))
