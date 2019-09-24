@@ -1,13 +1,13 @@
 # mpcc
 mpcc stands for mpc client.<br>
-MPD is controlled by mpc and supports folder-based music playback.
+MPD is controlled by mpc and supports folder-based music playback at web browser.
 
 ![image](https://user-images.githubusercontent.com/1241251/65522097-348dc100-df25-11e9-96b1-a011e9d61e2f.png)
 
 ## Install
 
 Require python3, MPD, mpc.
-Run install.sh and reboot your machine.
+Run install.sh and reboot your Linux machine.
 
 * Install MPD and mpc if needed.
 * Copy mpcc.py to /opt/mpcc
