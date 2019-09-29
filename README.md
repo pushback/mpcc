@@ -2,16 +2,20 @@
 mpcc stands for mpc client.<br>
 MPD is controlled by mpc and supports folder-based music playback at web browser.
 
-![image](https://user-images.githubusercontent.com/1241251/65522097-348dc100-df25-11e9-96b1-a011e9d61e2f.png)
+![](https://user-images.githubusercontent.com/1241251/65836691-c08c5800-e32c-11e9-844d-422b829c56e6.png)
 
 ## Install
 
-Require python3, MPD, mpc.
+Require python3, mutagen(MP3 tag liblary for coverart display), MPD(playing mp3), mpc(controll MPD).
+
 Run install.sh and reboot your Linux machine.
 
-* Install MPD and mpc if needed.
+install.sh performs the following operations:
+
+* Install mutagen by "pip install" if needed.
+* Install MPD and mpc by "apt install" if needed.
 * Copy mpcc.py to /opt/mpcc
-* Regist service by systemctl.
+* Regist mpcc.service by systemctl.
 
 ~~~
 $ git clone https://github.com/pushback/mpcc.git
