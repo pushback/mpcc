@@ -2,6 +2,9 @@
 # install mpcc
 # ----------------------------------------
 
+# mutagen install
+sudo pip install mutagen
+
 # MPD, mpc install
 sudo apt install mpd mpc
 
