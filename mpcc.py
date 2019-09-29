@@ -11,12 +11,13 @@ import re
 import subprocess
 import threading
 import urllib.parse
+from datetime import datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from socketserver import ThreadingMixIn
-from mutagen.mp3 import MP3
-from wsgiref.handlers import format_date_time
-from datetime import datetime
 from time import mktime
+from wsgiref.handlers import format_date_time
+
+from mutagen.mp3 import MP3
 
 ROOT_PATH = '/media/music/'
 SKIP_PATH_REGEXP = r'^/media/'
@@ -103,7 +104,6 @@ class mpccGetHandler(BaseHTTPRequestHandler):
                 }
                 .cover{
                     background-color:black;
-                    border:1px white solid;
                     color:lightgray;
                     float:left;
                     height:256px;
