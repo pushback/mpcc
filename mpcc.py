@@ -13,6 +13,10 @@ import threading
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from socketserver import ThreadingMixIn
+from mutagen.mp3 import MP3
+from wsgiref.handlers import format_date_time
+from datetime import datetime
+from time import mktime
 
 ROOT_PATH = '/media/music/'
 SKIP_PATH_REGEXP = r'^/media/'
@@ -39,6 +43,7 @@ class mpccGetHandler(BaseHTTPRequestHandler):
     /view/path       show dir list of path
     /exec/command    run command as `mpc command`
     /playing         show dir playing file
+    /cover/path      return coverart jpg or png
     """
 
     def do_GET(self):
@@ -62,7 +67,9 @@ class mpccGetHandler(BaseHTTPRequestHandler):
 
         try:
             req_path = self.path
+            response_mode = 'text'
             response_code = 200
+            response_header = []
             response_body = '''
             <head>
                 <title>mpcc(mpc Client)</title>
@@ -94,17 +101,42 @@ class mpccGetHandler(BaseHTTPRequestHandler):
                     padding:0.2em;
                     width:100%;
                 }
+                .cover{
+                    background-color:black;
+                    border:1px white solid;
+                    color:lightgray;
+                    float:left;
+                    height:256px;
+                    margin:0.2em;
+                    width:256px;
+                }
+                .music-status{
+                    background-color:black;
+                    float:left;
+                    margin:5px;
+                    padding:0px;
+                    width:100%;
+                }
+                .music-ctl{
+                    clear:left;
+                }
                 </style>
             </head>
             <body>'''
+            response_body += "<div class=\"music-status\">"
+            playing_path = exec_cmd("mpc -f %file%").split("\n")[0]
+            if os.path.isfile(ROOT_PATH + playing_path):
+                response_body += "<img src=\"/cover/{}\" alt=\"coverart\" onerror=\"this.alt='no image'\" class=\"cover\">".format(
+                    urllib.parse.quote(playing_path))
             response_body += "<pre>{}</pre>".format(
-                exec_cmd('mpc'))
-            response_body += "<p>"
-            response_body += '''<input type="button" value="&lt;&lt;" onclick="document.createElement('img').src='/exec/mpc prev';location.reload()">'''
-            response_body += '''<input type="button" value="|&gt;" onclick="document.createElement('img').src='/exec/mpc toggle';location.reload()">'''
-            response_body += '''<input type="button" value="&gt;&gt;" onclick="document.createElement('img').src='/exec/mpc next';location.reload()">'''
-            response_body += '''<input type="button" value="Vol-" onclick="document.createElement('img').src='/exec/mpc volume -1';location.reload()">'''
-            response_body += '''<input type="button" value="Vol+" onclick="document.createElement('img').src='/exec/mpc volume +2';location.reload()">'''
+                re.sub(r' +repeat.+', '', exec_cmd('mpc')))
+            response_body += "</div>"
+            response_body += "<p class=\"music-ctl\">"
+            response_body += '''<input type="button" value="&lt;&lt;" onclick="document.createElement('img').src='/exec/mpc prev';setTimeout('location.reload()',500)">'''
+            response_body += '''<input type="button" value="|&gt;" onclick="document.createElement('img').src='/exec/mpc toggle';setTimeout('location.reload()',500)">'''
+            response_body += '''<input type="button" value="&gt;&gt;" onclick="document.createElement('img').src='/exec/mpc next';setTimeout('location.reload()',500)">'''
+            response_body += '''<input type="button" value="Vol-" onclick="document.createElement('img').src='/exec/mpc volume -1';setTimeout('location.reload()',500)">'''
+            response_body += '''<input type="button" value="Vol+" onclick="document.createElement('img').src='/exec/mpc volume +2';setTimeout('location.reload()',500)">'''
             response_body += "</p>"
             response_body += "<p>"
             response_body += "<input type=\"button\" value=\"Playing dir\" onclick=\"location.href='/playing/'\">"
@@ -152,7 +184,7 @@ class mpccGetHandler(BaseHTTPRequestHandler):
                         # .format(re.sub(SKIP_PATH_REGEXP, "", f)))
                         "mpc searchplay filename '{}'".format(f.replace("'", "'\\''")))
                     file_name = os.path.basename(f)
-                    response_body += "<input type=\"button\" value=\"{}\" onclick=\"document.createElement('img').src='/exec/{}'\" class=\"file\">\n".format(
+                    response_body += "<input type=\"button\" value=\"{}\" onclick=\"document.createElement('img').src='/exec/{}';setTimeout('location.reload()',500)\" class=\"file\">\n".format(
                         file_name, rest_next_param)
             elif rest_cmd == "exec":
                 # API:exec
@@ -160,6 +192,31 @@ class mpccGetHandler(BaseHTTPRequestHandler):
                 response_body += "$ {}\n".format(rest_param)
                 response_body += exec_cmd(rest_param)
                 response_body += "</pre>"
+            elif rest_cmd == "cover":
+                # API:cover
+                rest_param = ROOT_PATH + rest_param
+
+                if not os.path.isfile(rest_param):
+                    response_code = 404
+                    response_body = "".format()
+                elif "If-Modified-Since" in self.headers:
+                    # 2nd time response is Not Modified.
+                    response_code = 304
+                    response_body = "".format()
+                else:
+                    # 1st time response is coverart data.
+                    response_body = "".format()
+                    tags = MP3(rest_param).tags
+                    # print(tags.pprint())
+                    apic = tags.getall('APIC')[0]
+                    # print("mime:{}, data:{}Byte".format(
+                    #     apic.mime, len(apic.data)))
+                    response_header.append(("Content-Type", apic.mime))
+                    response_header.append(("Content-Disposition", "inline"))
+                    response_header.append(
+                        ("Last-Modified", format_date_time(mktime(datetime.now().timetuple()))))
+                    response_mode = 'binary'
+                    response_body = apic.data
             elif rest_cmd == "favicon.ico":
                 # 404 for "/favicon.ico" request
                 response_code = 404
@@ -171,8 +228,13 @@ class mpccGetHandler(BaseHTTPRequestHandler):
 
             # response return
             self.send_response(response_code)
+            for header in response_header:
+                self.send_header(header[0], header[1])
             self.end_headers()
-            self.wfile.write(response_body.encode('utf-8'))
+            if response_mode == 'text':
+                self.wfile.write(response_body.encode('utf-8'))
+            else:
+                self.wfile.write(response_body)
 
         except Exception as e:
             # any exception throw : output error info
